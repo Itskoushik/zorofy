@@ -27,16 +27,12 @@ NEXTAUTH_SECRET=<a-stable-random-secret>
 
 5. Restart the app. The Google sign-in button appears only when both Google credentials and the MongoDB connection are configured.
 
-For the current Netlify deployment, set these values in **Netlify site environment variables** (do not replace the local values in `.env.local`):
+For the Netlify deployment, set `NEXTAUTH_URL` in **Netlify site environment variables** to the site's HTTPS origin (do not replace the local value in `.env.local`). For example, use `https://<your-zorofy-domain>`.
 
-```dotenv
-NEXTAUTH_URL=https://zorofy.netlify.app
-```
-
-In Google Cloud Console, add `https://zorofy.netlify.app` as an authorized JavaScript origin and register this exact authorized redirect URI:
+In Google Cloud Console, add that same HTTPS origin as an authorized JavaScript origin and register the corresponding callback URI:
 
 ```text
-https://zorofy.netlify.app/api/auth/callback/google
+https://<your-zorofy-domain>/api/auth/callback/google
 ```
 
 If the site moves to a custom domain, update both the Netlify `NEXTAUTH_URL` and Google OAuth origin/redirect URI to that domain. Remove any stale Hayasaka domain callback entries. Keep the client secret server-side; never use a `NEXT_PUBLIC_` prefix for it.

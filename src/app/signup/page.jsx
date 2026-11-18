@@ -19,6 +19,7 @@ const page = () => {
     userName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   useEffect(() => {
@@ -42,6 +43,10 @@ const page = () => {
       toast.error("Account storage is not configured. Set MONGODB_URI in .env.local, then restart the app.");
       return;
     }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       dispatch(setProgress(70));
@@ -54,6 +59,7 @@ const page = () => {
           userName: formData.userName,
           email: formData.email,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -136,6 +142,24 @@ const page = () => {
                 placeholder="Password"
                 required
                 className=" appearance-none bg-black border-b border-white focus:outline-none text-base lg:text-lg"
+              />
+            </div>
+            <p className="text-xs font-normal text-zorofy-muted">
+              Passwords are only needed for email sign-up. Google sign-in uses your Google account instead.
+            </p>
+            <div className="flex gap-4 items-end">
+              <label htmlFor="confirmPassword">Confirm password</label>
+              <input
+                onChange={onchange}
+                value={formData.confirmPassword}
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                placeholder="Confirm password"
+                required
+                className="appearance-none bg-black border-b border-white focus:outline-none text-base lg:text-lg"
               />
             </div>
             <div className=" w-full flex justify-center">

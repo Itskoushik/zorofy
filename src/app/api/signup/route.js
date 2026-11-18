@@ -14,6 +14,7 @@ export async function POST(request) {
     const userName = String(body?.userName || "").trim();
     const email = String(body?.email || "").trim().toLowerCase();
     const password = String(body?.password || "");
+    const confirmPassword = String(body?.confirmPassword || "");
 
     if (!userName || !email || !password) {
       return NextResponse.json({ success: false, message: "Enter a username, email, and password." }, { status: 400 });
@@ -26,6 +27,9 @@ export async function POST(request) {
     }
     if (password.length < 8) {
       return NextResponse.json({ success: false, message: "Password must be at least 8 characters." }, { status: 400 });
+    }
+    if (password !== confirmPassword) {
+      return NextResponse.json({ success: false, message: "Passwords do not match." }, { status: 400 });
     }
 
     await dbConnect();

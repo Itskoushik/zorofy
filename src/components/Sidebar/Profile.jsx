@@ -1,71 +1,62 @@
-'use client'
-import React from 'react'
-import { signOut, useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation';
-import { getUserInfo } from '@/services/dataAPI';
-import { MdLogout } from 'react-icons/md';
-import ZorofyAudioLoader from '@/components/ZorofyAudioLoader';
-import { useState } from 'react';
-import { useEffect } from 'react';
+"use client";
 
+import React from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { MdLogout } from "react-icons/md";
+import ZorofyAudioLoader from "@/components/ZorofyAudioLoader";
 
-const Profile = ({setShowNav}) => {
-    const router = useRouter();
-    const {status, data} = useSession();
+const Profile = ({ setShowNav }) => {
+  const router = useRouter();
+  const { status, data } = useSession();
+  const account = data?.user || {};
+  const displayName = account.userName || account.name || "Your account";
+  const avatar = account.imageUrl || account.image || "/logo.png";
 
-    
-    const [user, setUser] = useState(null);
-    useEffect(() => {
-        const fetchUser = async () => {
-            const res = await getUserInfo();
-            // console.log('user',res);
-            setUser(res);
-        }
-        fetchUser();
-    }, [status]);
+  const goTo = (path) => {
+    setShowNav(false);
+    router.push(path);
+  };
+
   return (
-    <div className=' text-white'>
-        {
-        status === 'loading' ? <div className='ml-5'><ZorofyAudioLoader size="small" mode="loading" /></div> :
-            <div>
-                {
-                    status === 'unauthenticated' ? 
-                    (
-                        <div className=' flex gap-2 ml-5'>
-                            <button onClick={()=>{
-                                setShowNav(false);
-                                router.push('/login');
-                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00E676]'>
-                            Login&nbsp;
-                            </button>
-                            <button onClick={()=>{
-                                setShowNav(false);
-                                router.push('/signup');
-                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00E676]'>
-                            Signup
-                            </button>
-                        </div>
-                    ):
-                    (
-                        <div className=' flex gap-4 ml-1'>
-                            <img src={data?.imageUrl || user?.imageUrl} alt='user' width={50} height={50} className='rounded-full' />
-                            <div className='flex flex-col gap-1 w-full truncate'>
-                                <div className='flex justify-between items-center'>
-                            <h1 className='text-lg font-semibold'>{data?.userName || user?.userName}</h1>
-                            <MdLogout size={20} onClick={()=>{
-                                setShowNav(false);
-                                signOut();
-                            }} className='cursor-pointer text-white hover:text-[#00E676]' />
-                            </div>
-                            <h2 className='text-[10px] truncate'>{data?.user?.email || user?.email }</h2>
-                            </div>
-                        </div>
-                    )
-                }
+    <div className="text-white">
+      {status === "loading" ? (
+        <div className="ml-5"><ZorofyAudioLoader size="small" mode="loading" label="Loading account..." /></div>
+      ) : status === "unauthenticated" ? (
+        <div className="ml-5 flex gap-2">
+          <button type="button" onClick={() => goTo("/login")} className="m-2 rounded border border-[#00E676] px-3 py-1 text-lg">Login</button>
+          <button type="button" onClick={() => goTo("/signup")} className="m-2 rounded border border-[#00E676] px-3 py-1 text-lg">Sign up</button>
+        </div>
+      ) : (
+        <div className="ml-1 flex min-w-0 items-center gap-3">
+          <img
+            src={avatar}
+            alt={`${displayName}'s profile`}
+            width={48}
+            height={48}
+            referrerPolicy="no-referrer"
+            onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/logo.png"; }}
+            className="h-12 w-12 shrink-0 rounded-full border border-white/10 object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-base font-semibold">{displayName}</p>
+              <button
+                type="button"
+                title="Log out"
+                aria-label="Log out"
+                onClick={() => { setShowNav(false); signOut({ callbackUrl: "/" }); }}
+                className="shrink-0 rounded p-1 text-white transition hover:text-[#00E676] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00E676]"
+              >
+                <MdLogout size={21} />
+              </button>
             </div>
-        }
+            <p className="truncate text-xs text-zorofy-muted">{account.email || ""}</p>
+          </div>
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default Profile
+export default Profile;

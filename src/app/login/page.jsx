@@ -11,7 +11,7 @@ import { useSession } from "next-auth/react";
 import { FaGoogle } from "react-icons/fa";
 
 const page = () => {
-  const { status } = useSession();
+  const { status, update } = useSession();
   const router = useRouter();
   const dispatch = useDispatch();
   const [authConfig, setAuthConfig] = useState(null);
@@ -52,8 +52,9 @@ const page = () => {
         callbackUrl: "/",
       });
       if (res?.ok && !res.error) {
+        await update();
         toast.success("Logged in successfully");
-        router.replace(res.url || "/");
+        router.replace("/");
         router.refresh();
       } else {
         toast.error(res?.error === "CredentialsSignin" ? "Email or password is incorrect." : "Could not log in. Check your account configuration and try again.");
@@ -114,6 +115,9 @@ const page = () => {
                 className=" appearance-none bg-black border-b border-white focus:outline-none text-base lg:text-lg"
               />
             </div>
+            <p className="text-xs font-normal text-zorofy-muted">
+              Your session stays active for up to 30 days. Your browser can offer to save your password securely.
+            </p>
             <Link href={"/reset-password"}>
               <p className=" text-xs text-[#00E676]">Forgot Password?</p>
             </Link>

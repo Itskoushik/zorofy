@@ -88,10 +88,17 @@ const options = {
       }
 
       if (!databaseUser) return false;
+      const googleImage = profile?.picture || user?.image;
+      if (googleImage && databaseUser.imageUrl !== googleImage) {
+        databaseUser.imageUrl = googleImage;
+        await databaseUser.save();
+      }
       user.id = databaseUser._id.toString();
       user.name = databaseUser.userName;
       user.email = databaseUser.email;
-      user.image = databaseUser.imageUrl;
+      user.image = googleImage || databaseUser.imageUrl;
+      user.userName = databaseUser.userName;
+      user.imageUrl = user.image;
       return true;
     },
     async jwt({ token, user }) {

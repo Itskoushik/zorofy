@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return NextResponse.json({
     databaseConfigured: Boolean(process.env.MONGODB_URL || process.env.MONGODB_URI),

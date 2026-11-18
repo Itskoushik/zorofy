@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { createPlaylist } from '@/services/playlistApi';
 import { useDispatch } from 'react-redux';
 import { setIsTyping } from '@/redux/features/loadingBarSlice';
+import ZorofyAudioLoader from '@/components/ZorofyAudioLoader';
 
 
 
@@ -26,16 +27,16 @@ const PlaylistModal = ({ show, setShow }) => {
         }
         else{
             setLoading(true)
-            const res = await createPlaylist(name);
-            if(res.success == true){
-                toast.success(res.message)
-                setName('')
-                setShow(false)
+            try {
+                const res = await createPlaylist(name);
+                toast.success(res?.message || 'Playlist created');
+                setName('');
+                setShow(false);
+            } catch (error) {
+                toast.error(error?.message || 'Could not create playlist');
+            } finally {
+                setLoading(false);
             }
-            else{
-                toast.error(res.message)
-            }
-            setLoading(false)
         }
     }
 
@@ -62,7 +63,7 @@ const PlaylistModal = ({ show, setShow }) => {
                         </div>
                             <button onClick={handelCreate} className='text-sm group font-semibold mb-7 flex gap-2 border-[1.5px] border-white rounded-lg px-2 items-center py-2'>
                                 {
-                                    loading ? <div className='custom-loader w-[20px] h-[20px]'></div> : <FaPlus className=' w-[20] h-[20px] group-hover:text-[#00e6e6]' />
+                                    loading ? <ZorofyAudioLoader size='small' mode='loading' /> : <FaPlus className=' w-[20] h-[20px] group-hover:text-[#00E676]' />
                                 }
                                 Create</button>
                     </div>

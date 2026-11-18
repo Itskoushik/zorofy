@@ -10,15 +10,16 @@ const Languages = () => {
   const [selectedLanguages, setSelectedLanguages] = useState([...languages]);
 
   const languageList = [
-    { id: "english", label: "English" },
-    { id: "haryanvi", label: "Haryanvi" },
-    { id: "punjabi", label: "Punjabi" },
     { id: "hindi", label: "Hindi" },
-    { id: "rajasthani", label: "Rajasthani" },
-    { id: "tamil", label: "Tamil" },
+    { id: "kannada", label: "Kannada" },
     { id: "telugu", label: "Telugu" },
-    { id: "odia", label: "Odia" },
-    // Add more languages as needed
+    { id: "tamil", label: "Tamil" },
+    { id: "malayalam", label: "Malayalam" },
+    { id: "punjabi", label: "Punjabi" },
+    { id: "bengali", label: "Bengali" },
+    { id: "marathi", label: "Marathi" },
+    { id: "english", label: "English" },
+    { id: "international", label: "International" },
   ];
 
   const handleLanguageChange = (event) => {
@@ -45,7 +46,7 @@ const Languages = () => {
             <p className=" text-[9px] mb-7">Pick which you like to listen</p>
           </div>
         </summary>
-        <form className=" grid grid-cols-2 mb-1 h-28 overflow-y-scroll overflow-x-hidden hideScrollBar">
+        <form className=" grid grid-cols-2 mb-1 max-h-52 overflow-y-auto overflow-x-hidden hideScrollBar">
           {languageList.map((language) => (
             <div key={language.id} className="flex items-center mb-3 mx-2 ml-5">
               <input
@@ -61,7 +62,7 @@ const Languages = () => {
                 htmlFor={language.id}
                 className={`${
                   selectedLanguages.includes(language.id)
-                    ? "border-[#00e6e6] text-[#00e6e6]"
+                    ? "border-[#00E676] text-[#00E676]"
                     : "border-white text-white"
                 } cursor-pointer transition-colors text-sm min-w-[86px] text-center  border rounded-md p-2 font-semibold`}
               >

@@ -1,36 +1,39 @@
-import Link from "next/link";
 import React from "react";
 
-const Track = ({ isPlaying, isActive, activeSong, fullScreen }) => (
+const Track = ({ isPlaying, isActive, activeSong, fullScreen, videoExpanded, onExpand }) => (
   <div
-    className={`flex-1 flex items-center justify-start ${
+    className={`music-player-track flex min-w-0 flex-1 items-center justify-start ${!videoExpanded && activeSong?.id ? "pl-[216px]" : ""} ${
       fullScreen ? "hidden" : ""
     }`}
   >
-    <div
-      className={`${
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); onExpand?.(); }}
+      aria-label="Expand current song artwork and details"
+      className={`mr-4 h-16 w-16 shrink-0 overflow-hidden rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00E676] ${
         isPlaying && isActive ? "animate-[spin_15s_linear_infinite]" : ""
-      } hidden sm:block h-16 w-16 mr-4`}
+      } ${videoExpanded ? "block" : "hidden"}`}
     >
       <img
         src={
-          activeSong?.image?.[2]?.url ||
-          "https://res.cloudinary.com/dbr73rpz9/image/upload/v1690447758/chibi_qxvxq6.png"
+          activeSong?.thumbnail || activeSong?.image?.[2]?.url ||
+          "/logo.png"
         }
-        alt="cover art"
-        className="rounded-full"
+        alt={activeSong?.name ? `${activeSong.name} cover art` : "Zorofy artwork"}
+        onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/logo.png"; }}
+        className="h-16 w-16 rounded-full object-cover"
       />
-    </div>
-    <div className={`w-[190px] select-none cursor-pointer`}>
+    </button>
+    <div className="track-info min-w-0 w-[190px] select-none cursor-pointer">
       <p className="truncate text-white font-bold text-lg">
         {activeSong?.name
           ? activeSong?.name.replace("&#039;", "'").replace("&amp;", "&")
-          : "Song"}
+          : "Nothing playing"}
       </p>
       <p className="truncate text-gray-300 text-sm">
         {activeSong?.artists?.primary?.length > 0
           ? activeSong.artists.primary.map((a) => a?.name?.trim()).join(", ")
-          : activeSong?.primaryArtists || "Artist"}
+          : activeSong?.channelTitle || "Choose a song to start listening"}
       </p>
     </div>
   </div>

@@ -1,85 +1,114 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import User from "@/models/User";
+import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/utils/dbconnect";
-import GoogleProvider from "next-auth/providers/google";
+import authSecret from "@/utils/authSecret";
+import User from "@/models/User";
 import UserData from "@/models/UserData";
+import { userEmailFilter } from "@/utils/userLookup";
 
-const options = {
-  providers: [
+const providers = [];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
+    })
+  );
+}
 
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {},
-      async authorize(credentials) {
-        try {
-          await dbConnect();
-          console.log("credentials");
-          const { email, password } = credentials;
-          const user = await User.findOne({ email });
-          if (user && (await bcrypt.compare(password, user.password))) {
-            return user;
-          }
-          return null;
-        } catch (e) {
-          console.error(e);
-          return null;
-        }
-      },
-    }),
-  ],
+providers.push(
+  CredentialsProvider({
+    name: "Email and password",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+    },
+    async authorize(credentials) {
+      const email = String(credentials?.email || "").trim().toLowerCase();
+      const password = String(credentials?.password || "");
+      if (!email || !password) return null;
+
+      await dbConnect();
+      const user = await User.findOne(userEmailFilter(email));
+      if (!user?.password || !(await bcrypt.compare(password, user.password))) {
+        return null;
+      }
+
+      return {
+        id: user._id.toString(),
+        name: user.userName,
+        email: user.email,
+        image: user.imageUrl,
+        userName: user.userName,
+        imageUrl: user.imageUrl,
+      };
+    },
+  })
+);
+
+const options = {
+  providers,
   pages: {
     signIn: "/login",
     signOut: "/",
-    error: "/",
+    error: "/login",
   },
   session: {
-    jwt: true,
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
-  secret: process.env.JWT_SECRET,
-
+  secret: authSecret,
   callbacks: {
-    // async session({ session}) {
-    //     const  sessionUser  = await User.findOne({ email: session.user.email });
-    //     if (sessionUser) {
-    //         session.user.id = sessionUser._id;
-    //         session.userName = sessionUser.userName;
-    //         session.imageUrl = sessionUser.imageUrl;
-    //         session.isVerified = sessionUser.isVerified;
-    //     }
-    //     return session;
-    // },
+    async signIn({ user, account, profile }) {
+      if (account?.provider !== "google") return true;
 
-    async signIn({ account, profile }) {
-      if (account.provider === "google") {
+      const email = String(profile?.email || user?.email || "").trim().toLowerCase();
+      if (!email || profile?.email_verified === false) return false;
+
+      await dbConnect();
+      let databaseUser = await User.findOne(userEmailFilter(email));
+      if (!databaseUser) {
+        const userData = await UserData.create({});
         try {
-          await dbConnect();
-          const { name, email, picture } = profile;
-          const userDB = await User.findOne({ email });
-          if (!userDB) {
-            const userData = await UserData.create({});
-            const newUser = await User.create({
-              userName: name,
-              email,
-              imageUrl: picture,
-              userData: userData._id,
-              isVerified: profile.email_verified,
-            });
-            return newUser;
-          }
-          return userDB;
-        } catch (e) {
-          console.error(e);
-          return null;
+          databaseUser = await User.create({
+            userName: profile?.name || user?.name || email.split("@")[0],
+            email,
+            imageUrl: profile?.picture || user?.image || "/logo.png",
+            isVerified: profile?.email_verified === true,
+            userData: userData._id,
+          });
+        } catch (error) {
+          await UserData.deleteOne({ _id: userData._id });
+          if (error?.code !== 11000) throw error;
+          databaseUser = await User.findOne(userEmailFilter(email));
         }
       }
+
+      if (!databaseUser) return false;
+      user.id = databaseUser._id.toString();
+      user.name = databaseUser.userName;
+      user.email = databaseUser.email;
+      user.image = databaseUser.imageUrl;
       return true;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id || user._id?.toString() || token.sub;
+        token.userName = user.userName || user.name || token.name;
+        token.imageUrl = user.imageUrl || user.image || token.picture;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id || token.sub;
+        session.user.userName = token.userName || token.name;
+        session.user.imageUrl = token.imageUrl || token.picture;
+      }
+      return session;
     },
   },
 };

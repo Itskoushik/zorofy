@@ -1,5 +1,5 @@
 "use client";
-import React, { use } from "react";
+import React from "react";
 import { FaChevronDown } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa";
 import { BiSolidPlaylist } from "react-icons/bi";
@@ -11,6 +11,7 @@ import { MdPlaylistPlay } from "react-icons/md";
 import { PiDotsThreeVerticalBold } from "react-icons/pi";
 import { MdOutlineDeleteOutline } from "react-icons/md";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 const Playlists = ({ setShowNav }) => {
   const [show, setShow] = useState(false);
@@ -19,24 +20,24 @@ const Playlists = ({ setShowNav }) => {
 
   useEffect(() => {
     const getPlaylists = async () => {
-      const res = await getUserPlaylists();
-      if (res?.success == true) {
-        setPlaylists(res?.data?.playlists);
-      }
+      try {
+        const res = await getUserPlaylists();
+        if (res?.success === true) setPlaylists(res?.data?.playlists || []);
+      } catch { setPlaylists([]); }
     };
     getPlaylists();
   }, [show]);
 
   const handleDelete = async (id) => {
-    const res = await deletePlaylist(id);
-    if (res?.success == true) {
-      setPlaylists(playlists.filter((playlist) => playlist._id !== id));
-    }
+    try {
+      await deletePlaylist(id);
+      setPlaylists((current) => current.filter((playlist) => playlist._id !== id));
+    } catch (error) { toast.error(error?.message || "Could not delete playlist."); }
   };
 
   return (
     <>
-      <div className="text-white pt-5 m-2 rounded-md w-[95%] hover:bg-white/5">
+      <div id="your-library" className="scroll-mt-24 text-white pt-5 m-2 rounded-md w-[95%] hover:bg-white/5">
         <details open className="text-white detailanimatation">
           <summary className=" flex cursor-pointer gap-3 items-baseline mx-2">
             <FaChevronDown className="arrow " />
@@ -91,7 +92,7 @@ const Playlists = ({ setShowNav }) => {
                 onClick={() => setShow(true)}
                 className="text-xs group font-semibold mb-7 flex gap-2 border-[1.5px] border-white rounded-lg px-2 items-center py-2"
               >
-                <FaPlus className=" group-hover:text-[#00e6e6]" />
+                <FaPlus className=" group-hover:text-[#00E676]" />
                 Create
               </button>
             </div>

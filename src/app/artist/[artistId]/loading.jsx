@@ -1,9 +1,9 @@
-import React from 'react'
+import ZorofyAudioLoader from '@/components/ZorofyAudioLoader'
 
 const loading = () => {
   return (
     <div className=' w-screen h-screen flex justify-center items-center'>
-        <span className="loader"></span>
+        <ZorofyAudioLoader size="large" label="Loading artist..." />
     </div>
   )
 }

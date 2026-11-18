@@ -5,6 +5,7 @@ import dbConnect from "@/utils/dbconnect";
 import Playlist from "@/models/Playlist";
 import UserData from "@/models/UserData";
 import auth from "@/utils/auth";
+import authSecret from "@/utils/authSecret";
 
 
 // Create a new playlist
@@ -117,7 +118,7 @@ export async function DELETE(req){
 
 // get all playlists
 export async function GET(req){
-    const token = await getToken({ req, secret: process.env.JWT_SECRET });
+    const token = await getToken({ req, secret: authSecret });
     if (!token) {
         return NextResponse.json(
             {

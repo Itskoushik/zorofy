@@ -5,6 +5,7 @@ import React, { useEffect } from 'react'
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
+import ZorofyAudioLoader from '@/components/ZorofyAudioLoader';
 
 const page = () => {
   const [favouriteSongs, setFavouriteSongs] = useState([]);
@@ -27,7 +28,7 @@ const page = () => {
   // redirect if user is authenticated
   if (status === 'loading') {
     return <div className=' w-screen h-screen flex justify-center items-center'>
-      <span className="loader"></span>
+      <ZorofyAudioLoader size="medium" label="Finding your favourites..." />
     </div>
   }
   if (status === 'unauthenticated') {

@@ -1,46 +1,35 @@
-import React from 'react'
-import { Swiper, SwiperSlide} from "swiper/react";
+import { Swiper } from "swiper/react";
 import "swiper/css";
-import {
-  FreeMode,
-  Navigation,
-  Mousewheel,
-  Keyboard,
-  Virtual,
-} from "swiper/modules";
+import { FreeMode, Mousewheel, Keyboard } from "swiper/modules";
 import { MdNavigateNext } from "react-icons/md";
 import { MdNavigateBefore } from "react-icons/md";
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 const SwiperLayout = ({children,title}) => {
-    const albumNext = useRef(null);
-    const ablumPrv = useRef(null);
+    const swiperRef = useRef(null);
+    const [canGoBack, setCanGoBack] = useState(false);
+    const [canGoForward, setCanGoForward] = useState(false);
 
-    const renderSlide = (slideData) => {
-      // Extract the content of each SwiperSlide and return it
-      return React.Children.map(slideData, (child) => {
-        if (React.isValidElement(child) && child.type === SwiperSlide) {
-          return child.props.children;
-        }
-        return null;
-      });
+    const updateNavigation = (swiper) => {
+      setCanGoBack(!swiper.isBeginning);
+      setCanGoForward(!swiper.isEnd);
     };
 
   return (
     <div className=" my-4 lg:mt-14">
     <div className=" flex justify-between">
       <h2 className=" text-white mt-4 text-2xl lg:text-3xl font-semibold mb-4 ">{title}</h2>
-        <div className=" hidden md:flex gap-1">
-        <div ref={ablumPrv} className=" m-4 mb-5 border border-white rounded-full cursor-pointer">
-      <MdNavigateBefore size={35}  className="text-white text-xl" />
-      </div>
-      <div ref={albumNext} className=" m-4 mb-5 border border-white rounded-full cursor-pointer">
-      <MdNavigateNext size={35}  className="text-white text-xl" />
-      </div>
+        <div className="hidden md:flex gap-1">
+        <button type="button" aria-label={`Scroll ${title} backward`} disabled={!canGoBack} onClick={() => swiperRef.current?.slidePrev()} className="m-4 mb-5 rounded-full border border-white/15 p-1 transition hover:border-zorofy-green hover:text-zorofy-green disabled:opacity-30">
+          <MdNavigateBefore size={28} className="text-white" />
+        </button>
+        <button type="button" aria-label={`Scroll ${title} forward`} disabled={!canGoForward} onClick={() => swiperRef.current?.slideNext()} className="m-4 mb-5 rounded-full border border-white/15 p-1 transition hover:border-zorofy-green hover:text-zorofy-green disabled:opacity-30">
+          <MdNavigateNext size={28} className="text-white" />
+        </button>
       </div>
       </div>
       <Swiper
-        modules={[Navigation, FreeMode, Mousewheel, Keyboard, Virtual]}
+        modules={[FreeMode, Mousewheel, Keyboard]}
         style={{
           "--swiper-navigation-size": "20px",
           "--swiper-navigation-color": "white",
@@ -55,28 +44,10 @@ const SwiperLayout = ({children,title}) => {
           forceToAxis: true,
         }}
         freeMode={true}
-        navigation={
-          {
-             nextEl: albumNext.current,
-            prevEl: ablumPrv.current,
-        }
-        }
-        virtual={
-          {
-            enabled: true,
-            slides: renderSlide(children),
-            cache: true,
-            addSlidesAfter: 4,
-            addSlidesBefore: 4,
-          }
-        }
-
-        onInit={(swiper) => {
-          swiper.params.navigation.prevEl = ablumPrv.current;
-          swiper.params.navigation.nextEl = albumNext.current;
-          swiper.navigation.init();
-          swiper.navigation.update();
-        }}
+        keyboard={{ enabled: true, onlyInViewport: true }}
+        onSwiper={(swiper) => { swiperRef.current = swiper; updateNavigation(swiper); }}
+        onSlideChange={updateNavigation}
+        onResize={updateNavigation}
         className="mySwiper"
       >
         {children}

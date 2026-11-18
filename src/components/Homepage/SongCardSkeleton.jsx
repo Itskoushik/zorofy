@@ -2,11 +2,9 @@ import React from 'react'
 
 const SongCardSkeleton = () => {
   return (
-    <div className=' flex gap-3 lg:gap-6 overflow-hidden'>{
-    Array(6).fill().map((_, i) => (
-    <div key={i} className="flex flex-col lg:w-[205px] p-2 bg-white/5 bg-opacity-80 backdrop-blur-sm animate-slideup rounded-lg cursor-pointer">
+    <div className='flex w-full flex-col p-2 lg:w-[205px] rounded-lg bg-white/5 animate-pulse'>
     <div role="status" className="animate-pulse">
-      <div className="flex items-center justify-center h-24  md:h-[180px] rounded-lg dark:bg-gray-800">
+      <div className="flex aspect-square items-center justify-center rounded-lg bg-gray-800">
        
       </div>
       <div className="w-full mt-3">
@@ -15,8 +13,6 @@ const SongCardSkeleton = () => {
       </div>
     </div>
   </div>
-    ))
-    }</div>
   )
 }
 

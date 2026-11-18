@@ -29,7 +29,6 @@ const SongsList = ({
   playlistID,
   setSongs,
 }) => {
-  console.log("SongData", SongData);
   const { activeSong } = useSelector((state) => state.player);
   const [showMenu, setShowMenu] = useState(false);
   const [playlists, setPlaylists] = useState([]);
@@ -49,44 +48,42 @@ const SongsList = ({
   }
 
   useEffect(() => {
+    let cancelled = false;
     const getPlaylists = async () => {
-      const res = await getUserPlaylists();
-      if (res?.success == true) {
-        setPlaylists(res?.data?.playlists);
-      }
+      try {
+        const res = await getUserPlaylists();
+        if (!cancelled && res?.success === true) setPlaylists(res?.data?.playlists || []);
+      } catch { if (!cancelled) setPlaylists([]); }
     };
     getPlaylists();
+    return () => { cancelled = true; };
   }, []);
 
   // add song to playlist
   const handleAddToPlaylist = async (song, playlistID) => {
     setShowMenu(false);
-    const res = await addSongToPlaylist(playlistID, song);
-    if (res?.success == true) {
-      toast.success(res?.message);
-    } else {
-      toast.error(res?.message);
-    }
+    try { const res = await addSongToPlaylist(playlistID, song); toast.success(res?.message || "Added to playlist."); }
+    catch (error) { toast.error(error?.message || "Could not add this track."); }
   };
 
   // delete song from playlist
   const handleDeleteFromPlaylist = async (playlistID, song) => {
     setShowMenu(false);
-    const res = await deleteSongFromPlaylist(playlistID, song);
-    if (res?.success == true) {
-      setSongs((prev) => {
-        return prev.filter((s) => s?.id?.toString() !== song.toString());
-      });
-      toast.success(res?.message);
-    } else {
-      toast.error(res?.message);
-    }
+    try {
+      const res = await deleteSongFromPlaylist(playlistID, song);
+      if (res?.success === true) {
+        setSongs((prev) => prev.filter((s) => s?.id?.toString() !== song.toString()));
+        toast.success(res?.message || "Track removed.");
+      }
+    } catch (error) { toast.error(error?.message || "Could not remove this track."); }
   };
 
   return (
     <>
       <div className="mt-5">
-        {!loading && SongData?.length > 0 ? (
+        {loading ? (
+          <SongListSkeleton />
+        ) : Array.isArray(SongData) && SongData.length > 0 ? (
           SongData?.map((song, index) => (
             <div
               key={song?.id}
@@ -94,13 +91,14 @@ const SongsList = ({
                 handlePlayClick(song, index);
               }}
               className={`flex items-center mt-5 cursor-pointer group border-b-[1px] border-gray-400 justify-between ${
-                activeSong?.id === song?.id && " text-[#00e6e6]"
+                activeSong?.id === song?.id && " text-[#00E676]"
               }`}
             >
               <div className="flex items-center gap-5">
                 <div className=" relative mb-3">
                   <img
-                    src={song?.image?.[2]?.url}
+                  src={song?.thumbnail || song?.image?.[2]?.url || song?.image?.[1]?.url || "/logo.png"}
+                  onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/logo.png"; }}
                     alt={song?.name}
                     width={50}
                     height={50}
@@ -109,7 +107,7 @@ const SongsList = ({
                   {activeSong?.id === song?.id ? (
                     <BiHeadphone
                       size={27}
-                      className=" absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#00e6e6]"
+                      className=" absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#00E676]"
                     />
                   ) : (
                     <BsPlayFill
@@ -120,14 +118,14 @@ const SongsList = ({
                 </div>
                 <div className=" w-24 md:w-64">
                   <p className="text-sm lg:text-lg font-semibold truncate">
-                    {song?.name
+                      {song?.name || song?.title
                       ?.replace("&#039;", "'")
                       ?.replaceAll("&amp;", "&")}
                   </p>
                   <p className="text-gray-400 truncate text-xs">
                     {song?.artists?.primary
                       ?.map((artist) => artist.name)
-                      .join(", ")}
+                      .join(", ") || song?.channelTitle || "Zorofy"}
                   </p>
                 </div>
               </div>
@@ -196,7 +194,7 @@ const SongsList = ({
             </div>
           ))
         ) : (
-          <SongListSkeleton />
+          <p className="py-8 text-center text-gray-400">This playlist does not have any tracks yet.</p>
         )}
       </div>
       {/* overlay */}

@@ -3,29 +3,28 @@ import "./globals.css";
 import MusicPlayer from "@/components/MusicPlayer";
 import Providers from "@/redux/Providers";
 import TopProgressBar from "@/components/topProgressBar/TopProgressBar";
-import Favicon from "./favicon.ico";
 import SongsHistory from "@/components/SongsHistory";
 import { Toaster } from "react-hot-toast";
 import AuthProvider from "./AuthProvider";
-import { Poppins } from "next/font/google";
 import Script from "next/script";
+import AppContent from "@/components/AppContent";
 
-const poppins = Poppins({
-  weight: "500",
-  subsets: ["latin-ext"],
-  display: "swap",
-});
-
+const brandTitle = "Zorofy – Your Music, Your Vibe";
 export const metadata = {
-  title: "Hayasaka",
-  description: "Music streaming app",
-  image:
-    "https://res.cloudinary.com/dbr73rpz9/image/upload/v1690380865/images/logo-color_noktgr.png",
-  url: "https://hayasaka.vercel.app",
-  type: "website",
-  icons: [{ rel: "icon", url: Favicon.src }],
-  site_name: "Hayasaka",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")),
+  title: brandTitle,
+  description: "Discover and play Indian and international music on Zorofy.",
+  applicationName: "Zorofy",
+  icons: { icon: "/favicon.ico", shortcut: "/favicon.ico", apple: "/logo.png" },
   manifest: "/manifest.json",
+  openGraph: {
+    title: brandTitle,
+    description: "Discover and play Indian and international music on Zorofy.",
+    siteName: "Zorofy",
+    type: "website",
+    images: [{ url: "/logo.png", width: 1254, height: 1254, alt: "Zorofy" }],
+  },
+  twitter: { card: "summary_large_image", title: brandTitle, description: "Discover and play Indian and international music on Zorofy.", images: ["/logo.png"] },
 };
 
 export default function RootLayout({ children }) {
@@ -44,16 +43,17 @@ export default function RootLayout({ children }) {
   gtag('config', 'G-Z4FJ5T627Q');
   `}
       </Script>
-      <body className={poppins.className}>
+      <body className="overflow-hidden">
         <Providers>
           <AuthProvider>
             <TopProgressBar />
             <SongsHistory />
-            <Navbar />
             <Toaster />
-            {children}
-            <div className="h-20"></div>
-            <div className="fixed  bottom-0 left-0 right-0 flex backdrop-blur-lg rounded-t-3 z-50">
+            <AppContent>
+              <Navbar />
+              {children}
+            </AppContent>
+            <div className="fixed bottom-0 left-0 right-0 z-50 flex rounded-t-3 backdrop-blur-lg">
               <MusicPlayer />
             </div>
           </AuthProvider>

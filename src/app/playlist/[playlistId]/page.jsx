@@ -1,65 +1,31 @@
-import PlayButton from "@/components/PlayButton";
-import SongList from "@/components/SongsList";
-import { getplaylistData, homePageData } from "@/services/dataAPI";
+"use client";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import PlaylistTracks from "@/components/PlaylistTracks";
+import { getplaylistData } from "@/services/dataAPI";
 
-const page = async ({ params }) => {
-  const playlistData = await getplaylistData(params.playlistId);
+export default function PlaylistPage() {
+  const params = useParams();
+  const playlistId = String(params.playlistId || "");
+  const [playlist, setPlaylist] = useState(null);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    getplaylistData(playlistId, "", { signal: controller.signal }).then((result) => {
+      if (!controller.signal.aborted) setPlaylist({ ...result.playlist, songs: result.items || [], nextPageToken: result.nextPageToken || "" });
+    }).catch((e) => { if (!controller.signal.aborted) setError(e.message || "This playlist could not be loaded."); });
+    return () => controller.abort();
+  }, [playlistId, retry]);
 
-  const coverImage =
-    playlistData?.image?.[2]?.url ||
-    playlistData?.image?.[1]?.url ||
-    playlistData?.image?.[0]?.url ||
-    null;
-
-  return (
-    <div className="w-11/12 m-auto mt-16">
-      <div className="flex flex-col lg:flex-row items-center">
-        {coverImage ? (
-          <img
-            className="rounded-2xl w-[250px] h-[250px] object-cover shadow-lg"
-            src={coverImage}
-            alt={playlistData?.name || playlistData?.title || "Playlist"}
-            width={250}
-            height={250}
-          />
-        ) : (
-          <div className="w-[250px] h-[250px] rounded-2xl bg-gray-800 flex items-center justify-center">
-            <span className="text-gray-400 text-5xl">🎵</span>
-          </div>
-        )}
-
-        <div className="lg:ml-10 text-gray-100 mt-12 flex flex-col gap-2 items-center md:items-start">
-          <h1 className="text-xl lg:text-4xl font-bold">
-            {playlistData?.name || playlistData?.title || "Playlist"}
-          </h1>
-          <ul className="flex items-center text-center flex-col gap-3 text-gray-300">
-            <li className="text-sm font-semibold">{playlistData?.description}</li>
-          </ul>
-          <PlayButton songList={playlistData} />
-        </div>
-      </div>
-      <div className="mt-10 text-gray-200">
-        <h1 className="text-3xl font-bold">Songs</h1>
-        <SongList SongData={playlistData?.songs} loading={false} />
-      </div>
-    </div>
-  );
-};
-
-export default page;
-
-// 4 hour
-export const revalidate = 14400;
-
-export async function generateStaticParams() {
-  try {
-    const res = await homePageData(["english", "hindi", "punjabi"]);
-    return (
-      res?.charts?.map((playlist) => ({
-        playlistId: playlist?.id?.toString(),
-      })) || []
-    );
-  } catch {
-    return [];
-  }
+  if (error) return <main className="mx-auto mt-20 w-11/12 max-w-4xl rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white"><h1 className="text-2xl font-bold">Playlist unavailable</h1><p role="alert" className="mt-3 text-gray-300">{error}</p><button onClick={() => { setError(""); setRetry((n) => n + 1); }} className="mt-6 rounded-lg bg-[#00E676] px-5 py-2 font-semibold text-slate-950">Retry</button></main>;
+  if (!playlist) return <p role="status" className="py-24 text-center text-gray-400">Loading playlist…</p>;
+  const cover = playlist.thumbnail || playlist.image?.[2]?.url || playlist.image?.[1]?.url;
+  return <main className="mx-auto mt-12 w-11/12 max-w-7xl pb-8">
+    <header className="flex flex-col items-center gap-8 sm:flex-row sm:items-end">
+      {cover && <img className="h-56 w-56 rounded-2xl object-cover shadow-lg" src={cover} alt={playlist.title || "Playlist artwork"} />}
+      <div className="text-center text-gray-100 sm:text-left"><p className="text-sm font-semibold uppercase tracking-wider text-[#00E676]">Playlist</p><h1 className="mt-2 text-2xl font-bold lg:text-4xl">{playlist.title}</h1><p className="mt-3 text-gray-300">{playlist.channelTitle} · {playlist.itemCount || playlist.songs.length} tracks</p>{playlist.description && <p className="mt-3 max-w-2xl text-sm text-gray-400">{playlist.description}</p>}</div>
+    </header>
+    <PlaylistTracks playlist={playlist} playlistId={playlistId} />
+  </main>;
 }

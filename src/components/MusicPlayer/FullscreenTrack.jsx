@@ -1,6 +1,5 @@
 import Lyrics from "./Lyrics";
 import React from "react";
-import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { setFullScreen } from "@/redux/features/playerSlice";
 import { useSwipeable } from "react-swipeable";
@@ -8,6 +7,8 @@ import { useSwipeable } from "react-swipeable";
 const FullscreenTrack = ({
   fullScreen,
   activeSong,
+  videoExpanded,
+  largeVideo,
   handlePrevSong,
   handleNextSong,
 }) => {
@@ -23,59 +24,41 @@ const FullscreenTrack = ({
 
   return (
     <div
-      className={`${
-        fullScreen ? "block" : "hidden"
-      } w-[100vw] flex lg:flex-row lg:w-[1000px] mx-auto flex-col  lg:justify-between mt-10`}
+      className={`${fullScreen ? "flex" : "hidden"} ${largeVideo ? "fullscreen-track-below-video" : ""} w-full max-w-[1000px] px-4 mx-auto flex-row items-center justify-between gap-4 pt-3`}
     >
       <div className="flex flex-col items-center lg:w-96">
-        <div
-          {...handlers}
-          className=" h-80 w-80 lg:h-[500px] lg:w-[500px] sm:mt-5 mt-28 "
-        >
+        <button type="button" {...handlers} onClick={(event) => { event.stopPropagation(); dispatch(setFullScreen(false)); }} aria-label="Collapse expanded track artwork" aria-hidden={!videoExpanded} className={`fullscreen-track-artwork ${largeVideo ? "h-32 w-32" : "h-[200px] w-[200px]"} shrink-0 overflow-hidden rounded-2xl shadow-xl ring-1 ring-white/10 ${videoExpanded ? "visible" : "invisible pointer-events-none"}`}>
           <img
             src={
               activeSong?.image?.[2]?.url ||
               activeSong?.image?.[1]?.url ||
               activeSong?.image?.[0]?.url ||
-              "https://res.cloudinary.com/dbr73rpz9/image/upload/v1690447758/chibi_qxvxq6.png"
+              "/logo.png"
             }
             alt="cover art"
+            onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = "/logo.png"; }}
             width={500}
             height={500}
-            className="rounded-2xl w-full h-full object-cover"
+            className="h-full w-full object-cover"
           />
-        </div>
+        </button>
         <div
           onClick={(e) => e.stopPropagation()}
-          className=" w-full select-none cursor-pointer text-center my-5"
+          className="min-w-0 flex-1 select-none text-left"
         >
-          <p className="truncate text-white font-bold text-2xl mx-3 mb-1">
+          <p className="truncate text-white font-bold text-base sm:text-xl mb-1">
             {activeSong?.name
               ? activeSong?.name.replace("&#039;", "'").replace("&amp;", "&")
               : "Song"}
           </p>
           <p className="truncate text-gray-300">
-            {activeSong?.artists?.primary
-              ? activeSong?.artists.primary?.map((artist, index) => (
-                  <React.Fragment key={index}>
-                    <Link
-                      className=" hover:underline mx-1"
-                      href={`/artist/${artist?.id}`}
-                      onClick={() => {
-                        dispatch(setFullScreen(false));
-                      }}
-                    >
-                      {artist?.name?.trim()}
-                    </Link>
-                  </React.Fragment>
-                ))
-              : "Artist"}
+            {activeSong?.channelId ? <a className="hover:underline" href={`https://www.youtube.com/channel/${encodeURIComponent(activeSong.channelId)}`} target="_blank" rel="noreferrer" onClick={() => dispatch(setFullScreen(false))}>{activeSong?.channelTitle || "Open artist page"}</a> : activeSong?.channelTitle || "Zorofy"}
           </p>
         </div>
       </div>
       <div
         onClick={(e) => e.stopPropagation()}
-        className=" ml-60  flex-col items-center lg:flex hidden"
+          className="hidden h-[min(70vh,620px)] w-[min(38vw,420px)] flex-col items-center overflow-y-auto lg:flex"
       >
         <Lyrics activeSong={activeSong} />
       </div>

@@ -11,7 +11,7 @@ const Favourites = ({ setShowNav }) => {
         onClick={() => setShowNav(false)}
       >
         <p className=" font-semibold text-lg text-white mx-3 mb-7">
-          Favourites
+          Liked Songs
         </p>
         <AiFillHeart
           title="Favourites"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   BsFillVolumeUpFill,
   BsVolumeDownFill,
@@ -19,12 +19,13 @@ const VolumeBar = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [playlists, setPlaylists] = useState([]);
+  const previousVolume = useRef(0.8);
   useEffect(() => {
     const getPlaylists = async () => {
-      const res = await getUserPlaylists();
-      if (res?.success == true) {
-        setPlaylists(res?.data?.playlists);
-      }
+      try {
+        const res = await getUserPlaylists();
+        if (res?.success === true) setPlaylists(res?.data?.playlists || []);
+      } catch {}
     };
     getPlaylists();
   }, []);
@@ -32,27 +33,24 @@ const VolumeBar = ({
   // add song to playlist
   const handleAddToPlaylist = async (song, playlistID) => {
     setShowMenu(false);
-    const res = await addSongToPlaylist(playlistID, song);
-    if (res?.success == true) {
-      toast.success(res?.message);
-    } else {
-      toast.error(res?.message);
-    }
+    try { const res = await addSongToPlaylist(playlistID, song); toast.success(res?.message || "Added to playlist."); }
+    catch (error) { toast.error(error?.message || "Could not add this track."); }
   };
   return (
     <>
       <div className="hidden lg:flex flex-1 items-center justify-end">
         <div className=" relative">
-          <BiAddToQueue
+          <button
+            type="button"
+            aria-label="Add current track to a playlist"
+            disabled={!activeSong?.id}
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
             title="Add to Playlist"
-            size={25}
-            color={"white"}
-            className={`${!true ? "hidden sm:block" : " m-3"} cursor-pointer`}
-          />
+            className="m-3 cursor-pointer disabled:opacity-40"
+          ><BiAddToQueue size={25} color="white" /></button>
           {showMenu && (
             <div
               onClick={() => {
@@ -90,30 +88,9 @@ const VolumeBar = ({
             </div>
           )}
         </div>
-        {value <= 1 && value > 0.5 && (
-          <BsFillVolumeUpFill
-            size={25}
-            color="#FFF"
-            className=" cursor-pointer"
-            onClick={() => setVolume(0)}
-          />
-        )}
-        {value <= 0.5 && value > 0 && (
-          <BsVolumeDownFill
-            size={25}
-            className=" cursor-pointer"
-            color="#FFF"
-            onClick={() => setVolume(0)}
-          />
-        )}
-        {value === 0 && (
-          <BsFillVolumeMuteFill
-            size={25}
-            color="#FFF"
-            className=" cursor-pointer"
-            onClick={() => setVolume(1)}
-          />
-        )}
+        <button type="button" aria-label={Number(value) === 0 ? "Unmute" : "Mute"} onClick={(event) => { event.stopPropagation(); if (Number(value) === 0) setVolume(previousVolume.current || 0.8); else { previousVolume.current = Number(value); setVolume(0); } }}>
+          {Number(value) === 0 ? <BsFillVolumeMuteFill size={24} color="#FFF" /> : Number(value) > 0.5 ? <BsFillVolumeUpFill size={24} color="#FFF" /> : <BsVolumeDownFill size={24} color="#FFF" />}
+        </button>
         <input
           onClick={(event) => {
             event.stopPropagation();
@@ -124,7 +101,7 @@ const VolumeBar = ({
           min={min}
           max={max}
           onChange={onChange}
-          className="2xl:w-24 lg:w-24 md:w-28 h-1 ml-2 accent-[#00e6e6] cursor-pointer"
+          className="2xl:w-24 lg:w-24 md:w-28 h-1 ml-2 accent-[#00E676] cursor-pointer"
         />
       </div>
       {/* overlay */}

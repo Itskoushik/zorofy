@@ -1,31 +1,16 @@
 {
-    "theme_color": "#000",
-    "background_color": "#000",
+    "theme_color": "#050807",
+    "background_color": "#050807",
     "display": "standalone",
     "scope": "/",
     "start_url": "/",
-    "name": "Hayasaka",
-    "description": "Music streaming and downloading platform.",
-    "short_name": "Hayasaka",
+    "name": "Zorofy – Your Music, Your Vibe",
+    "description": "Discover and play Indian and international music on Zorofy.",
+    "short_name": "Zorofy",
     "icons": [
         {
-            "src": "/icon-192x192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "/icon-256x256.png",
-            "sizes": "256x256",
-            "type": "image/png"
-        },
-        {
-            "src": "/icon-384x384.png",
-            "sizes": "384x384",
-            "type": "image/png"
-        },
-        {
-            "src": "/icon-512x512.png",
-            "sizes": "512x512",
+            "src": "/logo.png",
+            "sizes": "1254x1254",
             "type": "image/png"
         }
     ]

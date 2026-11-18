@@ -13,12 +13,12 @@ const Searchbar = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSubmit = (e) => {
-    if (searchTerm === '') {
+    if (!searchTerm.trim()) {
       e.preventDefault();
       return;
     }
     e.preventDefault();
-    router.push(`/search/${searchTerm}`);
+    router.push(`/search/${encodeURIComponent(searchTerm.trim())}`);
   };
   const handleFocus = () => {
     dispatch(setIsTyping(true));
@@ -28,19 +28,19 @@ const Searchbar = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} autoComplete="off" className="p-2 text-gray-400 relative focus-within:text-gray-600">
+    <form onSubmit={handleSubmit} autoComplete="off" role="search" className="relative w-[160px] shrink-0 p-2 text-gray-400 transition focus-within:text-white sm:w-[240px]">
       <label htmlFor="search-field" className="sr-only">
         Search all files
       </label>
-      <div className="flex flex-row justify-start items-center">
-        <FiSearch aria-hidden="true" className="w-5 h-5 ml-4 text-gray-300" />
+      <div className="flex items-center rounded-full border border-white/10 bg-white/[0.045] transition focus-within:border-zorofy-green/40 focus-within:bg-white/[0.07]">
+        <FiSearch aria-hidden="true" className="ml-4 h-5 w-5 text-zorofy-muted" />
         <input
         onFocus={handleFocus}
         onBlur={handleBlur}
           name="search-field"
           autoComplete="off"
           id="search-field"
-          className="flex-1 bg-transparent w-32 focus:border-b border-white lg:w-64 placeholder-gray-300 outline-none text-base text-white p-4"
+          className="w-[80px] flex-none bg-transparent p-3 text-sm text-white outline-none placeholder:text-zorofy-muted sm:w-40 sm:flex-1 lg:w-64"
           placeholder="Search"
           type="search"
           value={searchTerm}

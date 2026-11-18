@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation';
 import { getUserInfo } from '@/services/dataAPI';
 import { MdLogout } from 'react-icons/md';
+import ZorofyAudioLoader from '@/components/ZorofyAudioLoader';
 import { useState } from 'react';
 import { useEffect } from 'react';
 
@@ -25,7 +26,7 @@ const Profile = ({setShowNav}) => {
   return (
     <div className=' text-white'>
         {
-        status === 'loading' ? <div className=' ml-16'> <span className="loading"></span> </div> :
+        status === 'loading' ? <div className='ml-5'><ZorofyAudioLoader size="small" mode="loading" /></div> :
             <div>
                 {
                     status === 'unauthenticated' ? 
@@ -34,13 +35,13 @@ const Profile = ({setShowNav}) => {
                             <button onClick={()=>{
                                 setShowNav(false);
                                 router.push('/login');
-                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00e6e6]'>
+                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00E676]'>
                             Login&nbsp;
                             </button>
                             <button onClick={()=>{
                                 setShowNav(false);
                                 router.push('/signup');
-                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00e6e6]'>
+                            }} className=' border-2 border- px-3 py-1 m-2 rounded text-lg  border-[#00E676]'>
                             Signup
                             </button>
                         </div>
@@ -54,7 +55,7 @@ const Profile = ({setShowNav}) => {
                             <MdLogout size={20} onClick={()=>{
                                 setShowNav(false);
                                 signOut();
-                            }} className='cursor-pointer text-white hover:text-[#00e6e6]' />
+                            }} className='cursor-pointer text-white hover:text-[#00E676]' />
                             </div>
                             <h2 className='text-[10px] truncate'>{data?.user?.email || user?.email }</h2>
                             </div>

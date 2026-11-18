@@ -9,25 +9,21 @@ const ListenAgain = () => {
   const [songHistory, setSongHistory] = useState([]);
   const dispatch = useDispatch();
   useLayoutEffect(() => {
-    setSongHistory(
-      localStorage?.getItem("songHistory")
-        ? JSON.parse(localStorage.getItem("songHistory"))
-        : []
-    );
-    dispatch(
-      setAutoAdd(
-        localStorage?.getItem("autoAdd")
-          ? JSON.parse(localStorage.getItem("autoAdd"))
-          : false
-      )
-    );
+    try {
+      const history = JSON.parse(localStorage.getItem("songHistory") || "[]");
+      setSongHistory(Array.isArray(history) ? history : []);
+      dispatch(setAutoAdd(localStorage.getItem("autoAdd") === "true"));
+    } catch {
+      setSongHistory([]);
+      dispatch(setAutoAdd(false));
+    }
   }, []);
 
   return (
     <div>
       {/* Listen Again */}
       {songHistory?.length > 0 && (
-        <div>
+        <div id="recently-played" className="scroll-mt-24">
           <h2 className=" text-white mt-4 text-2xl lg:text-3xl font-semibold mb-4 ">
             Listen Again
           </h2>

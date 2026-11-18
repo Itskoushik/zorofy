@@ -1,12 +1,13 @@
 {
-  "name": "hayasaka",
+  "name": "zorofy",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.6",
@@ -32,7 +33,6 @@
     "react-redux": "^8.1.1",
     "react-swipeable": "^7.0.1",
     "react-top-loading-bar": "^2.3.1",
-    "react-use-downloader": "^1.2.8",
     "redux": "^4.2.1",
     "redux-persist": "^6.0.0",
     "sharp": "^0.33.5",

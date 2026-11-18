@@ -1,71 +1,64 @@
 import { NextResponse } from "next/server";
+import { encode } from "next-auth/jwt";
+import bcrypt from "bcryptjs";
 import dbConnect from "@/utils/dbconnect";
 import User from "@/models/User";
-import bcrypt from "bcryptjs";
-import Jwt from "jsonwebtoken";
-
+import authSecret from "@/utils/authSecret";
+import { userEmailFilter } from "@/utils/userLookup";
 
 export async function POST(request) {
-    const { email, password } = await request.json();
-    try {
-        if (!email || !password) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Please fill all the fields",
-                    data: null
-                },
-                { status: 400 }
-            );
-        }
-        await dbConnect();
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "User does not exist",
-                    data: null
-                },
-                { status: 400 }
-            );
-        }
-        const isPasswordCorrect = await bcrypt.compare(password, user.password);
-        if (!isPasswordCorrect) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Invalid credentials",
-                    data: null
-                },
-                { status: 400 }
-            );
-        }
-        const token = Jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" });
-        const response = NextResponse.json(
-            {
-                success: true,
-                message: "User logged in successfully",
-                data: { token }
-            }
-        );
-        response.cookies.set("token", token, {
-            httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60,
-        });
-        return response;
-
-
-    } catch (e) {
-        console.error(e);
-        return NextResponse.json(
-            {
-                success: false,
-                message: "Something went wrong",
-                data: null
-            },
-            { status: 500 }
-        );
+  try {
+    const body = await request.json();
+    const email = String(body?.email || "").trim().toLowerCase();
+    const password = String(body?.password || "");
+    if (!email || !password) {
+      return NextResponse.json({ success: false, message: "Enter your email and password." }, { status: 400 });
     }
+    if (!authSecret) {
+      return NextResponse.json({ success: false, message: "Authentication is not configured. Set NEXTAUTH_SECRET in .env.local." }, { status: 503 });
     }
+
+    await dbConnect();
+    const user = await User.findOne(userEmailFilter(email));
+    if (!user?.password || !(await bcrypt.compare(password, user.password))) {
+      return NextResponse.json({ success: false, message: "Email or password is incorrect." }, { status: 401 });
+    }
+
+    const token = await encode({
+      secret: authSecret,
+      token: {
+        sub: user._id.toString(),
+        id: user._id.toString(),
+        email: user.email,
+        name: user.userName,
+        userName: user.userName,
+        picture: user.imageUrl,
+        imageUrl: user.imageUrl,
+      },
+    });
+    const secure = process.env.NEXTAUTH_URL?.startsWith("https://") || Boolean(process.env.VERCEL);
+    const cookieName = secure ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+    const response = NextResponse.json({
+      success: true,
+      message: "Logged in successfully.",
+      data: { user: { id: user._id.toString(), userName: user.userName, email: user.email, imageUrl: user.imageUrl } },
+    });
+    response.cookies.set(cookieName, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure,
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60,
+    });
+    return response;
+  } catch (error) {
+    if (/define MONGODB_URL|MONGODB_URI/i.test(error?.message || "")) {
+      return NextResponse.json({ success: false, message: "Account storage is not configured. Add MONGODB_URI to .env.local." }, { status: 503 });
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ success: false, message: "The login request was invalid. Please try again." }, { status: 400 });
+    }
+    console.error("Login failed:", error?.name || "Unknown error");
+    return NextResponse.json({ success: false, message: "Could not log in. Check the account database configuration and try again." }, { status: 500 });
+  }
+}

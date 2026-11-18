@@ -1,109 +1,30 @@
-// create playlist
-export async function createPlaylist(name) {
+async function request(url, options = {}) {
+  let response;
   try {
-    const response = await fetch(`/api/userPlaylists`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name }),
-    });
-
-    const data = await response.json();
-    return data;
+    response = await fetch(url, { ...options, signal: options.signal || AbortSignal.timeout(15000) });
   } catch (error) {
-    console.log("Create playlist error", error);
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      throw new Error("The playlist service took too long to respond.");
+    }
+    throw new Error("Could not reach the playlist service. Check your connection and sign-in status.");
   }
+  let data;
+  try { data = await response.json(); } catch { throw new Error(`Playlist service returned an invalid response (${response.status}).`); }
+  if (!response.ok || data?.success === false) {
+    throw new Error(data?.message || `Playlist request failed (${response.status}).`);
+  }
+  return data;
 }
 
-// get user playlists
-export async function getUserPlaylists() {
-  try {
-    const response = await fetch(`/api/userPlaylists`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+const jsonRequest = (method, body) => ({
+  method,
+  headers: { "Content-Type": "application/json" },
+  ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+});
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Get user playlists error", error);
-  }
-}
-
-// delete playlist
-export async function deletePlaylist(id) {
-  try {
-    const response = await fetch(`/api/userPlaylists`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        playlistId: id,
-      }),
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Delete playlist error", error);
-  }
-}
-
-// add song to playlist
-export async function addSongToPlaylist(playlistID, song) {
-  try {
-    const response = await fetch(`/api/userPlaylists/songs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        playlistID,
-        song,
-      }),
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Add song to playlist error", error);
-  }
-}
-
-// delete song from playlist
-export async function deleteSongFromPlaylist(playlistID, song) {
-  try {
-    const response = await fetch(`/api/userPlaylists/songs`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        playlistID,
-        song,
-      }),
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Delete song from playlist error", error);
-  }
-}
-
-// get single playlist by id
-export async function getSinglePlaylist(id) {
-  try {
-    const response = await fetch(`/api/userPlaylists/songs?playlist=${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Get single playlist error", error);
-  }
-}
+export const createPlaylist = (name) => request("/api/userPlaylists", jsonRequest("POST", { name }));
+export const getUserPlaylists = () => request("/api/userPlaylists");
+export const deletePlaylist = (id) => request("/api/userPlaylists", jsonRequest("DELETE", { playlistId: id }));
+export const addSongToPlaylist = (playlistID, song) => request("/api/userPlaylists/songs", jsonRequest("POST", { playlistID, song }));
+export const deleteSongFromPlaylist = (playlistID, song) => request("/api/userPlaylists/songs", jsonRequest("DELETE", { playlistID, song }));
+export const getSinglePlaylist = (id) => request(`/api/userPlaylists/songs?${new URLSearchParams({ playlist: id })}`);

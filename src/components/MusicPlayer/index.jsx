@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   nextSong,
   prevSong,
   playPause,
   setFullScreen,
+  setRepeatMode,
 } from "../../redux/features/playerSlice";
 import Controls from "./Controls";
 import Player from "./Player";
@@ -14,14 +15,13 @@ import Track from "./Track";
 import VolumeBar from "./VolumeBar";
 import FullscreenTrack from "./FullscreenTrack";
 import Lyrics from "./Lyrics";
-import Downloader from "./Downloader";
 import { HiOutlineChevronDown } from "react-icons/hi";
 import { addFavourite, getFavourite } from "@/services/dataAPI";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import FavouriteButton from "./FavouriteButton";
-import getPixels from "get-pixels";
-import { extractColors } from "extract-colors";
+import { toast } from "react-hot-toast";
+import { getNextTrackIndex, getPreviousTrackIndex, shouldAdvanceAfterEnd } from "@/services/playerUtils.mjs";
 
 const MusicPlayer = () => {
   const {
@@ -31,77 +31,110 @@ const MusicPlayer = () => {
     isActive,
     isPlaying,
     fullScreen,
+    repeatMode = "off",
   } = useSelector((state) => state.player);
   const { isTyping } = useSelector((state) => state.loadingBar);
   const [duration, setDuration] = useState(0);
   const [seekTime, setSeekTime] = useState(0);
   const [appTime, setAppTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
-  const [repeat, setRepeat] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [favouriteSongs, setFavouriteSongs] = useState([]);
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const { status } = useSession();
   const router = useRouter();
-  const [bgColor, setBgColor] = useState();
+  const [playbackError, setPlaybackError] = useState("");
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
+  const dockRef = useRef(null);
+  const playerSlotRef = useRef(null);
+
+  useEffect(() => {
+    document.body.classList.toggle("video-expanded", videoExpanded);
+    return () => document.body.classList.remove("video-expanded");
+  }, [videoExpanded]);
+
+  useEffect(() => {
+    document.body.classList.toggle("has-active-song", Boolean(activeSong?.id));
+    return () => document.body.classList.remove("has-active-song");
+  }, [activeSong?.id]);
+
+  useLayoutEffect(() => {
+    const slot = playerSlotRef.current;
+    const dock = dockRef.current;
+    if (!slot || !dock) return;
+    const alignPlayerWithArtwork = () => {
+      if (fullScreen && !videoExpanded) {
+        const artwork = dock.querySelector(".fullscreen-track-artwork");
+        if (!artwork) return;
+        const artRect = artwork.getBoundingClientRect();
+        const dockRect = dock.getBoundingClientRect();
+        slot.style.position = "absolute";
+        slot.style.left = `${artRect.left - dockRect.left}px`;
+        slot.style.top = `${artRect.top - dockRect.top}px`;
+        slot.style.width = `${artRect.width}px`;
+        slot.style.height = `${artRect.height}px`;
+        slot.style.transform = "none";
+      } else {
+        slot.style.removeProperty("position");
+        slot.style.removeProperty("left");
+        slot.style.removeProperty("top");
+        slot.style.removeProperty("width");
+        slot.style.removeProperty("height");
+        slot.style.removeProperty("transform");
+      }
+    };
+    alignPlayerWithArtwork();
+    window.addEventListener("resize", alignPlayerWithArtwork);
+    return () => window.removeEventListener("resize", alignPlayerWithArtwork);
+  }, [fullScreen, videoExpanded, activeSong?.id]);
 
   useEffect(() => {
     if (currentSongs?.length) dispatch(playPause(true));
   }, [currentIndex]);
 
   useEffect(() => {
-    const fetchFavourites = async () => {
-      try {
-        setLoading(true);
-        const res = await getFavourite();
-        // console.log("favourites",res);
-        if (res) {
-          setFavouriteSongs(res);
-        }
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-      }
-    };
-    fetchFavourites();
-    // set ambient background
-    const src = activeSong?.image?.[1]?.url;
+    setAppTime(0);
+    setSeekTime(0);
+    setDuration(0);
+  }, [activeSong?.id]);
 
-    if (src) {
-      getPixels(src, (err, pixels) => {
-        if (!err) {
-          const data = [...pixels.data];
-          const width = Math.round(Math.sqrt(data.length / 4));
-          const height = width;
+  useEffect(() => {
+    let cancelled = false;
+    getFavourite()
+      .then((songs) => { if (!cancelled && Array.isArray(songs)) setFavouriteSongs(songs); })
+      .catch(() => { if (!cancelled) setFavouriteSongs([]); });
+    return () => { cancelled = true; };
+  }, []);
 
-          extractColors({ data, width, height })
-            .then((colors) => {
-              setBgColor(colors[0]);
-            })
-            .catch(console.log);
-        }
-      });
-    }
-    // change page title to song name
+  useEffect(() => {
+    setPlaybackError("");
+    setIsWaiting(false);
     if (activeSong?.name) {
       document.title = activeSong?.name;
+    } else {
+      document.title = "Zorofy – Your Music, Your Vibe";
     }
   }, [activeSong]);
 
   // off scroll when full screen
   useEffect(() => {
     document.documentElement.style.overflow = fullScreen ? "hidden" : "auto";
+    const content = document.querySelector(".app-content-scroll");
+    if (content) content.style.overflowY = fullScreen ? "hidden" : "auto";
 
     return () => {
       document.documentElement.style.overflow = "auto";
+      if (content) content.style.overflowY = "auto";
     };
   }, [fullScreen]);
 
   // Hotkey for play pause
   const handleKeyPress = (event) => {
-    // Check if the pressed key is the spacebar (keyCode 32 or key " ")
-    if (!isTyping && (event.keyCode === 32 || event.key === " ")) {
+    const target = event.target;
+    const isInteractive = target?.matches?.("input, textarea, select, button, [contenteditable='true']");
+    if (!isTyping && !isInteractive && !event.repeat && event.key === " ") {
       event.preventDefault();
       handlePlayPause();
     }
@@ -116,7 +149,7 @@ const MusicPlayer = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, isActive, isTyping]);
 
-  const handlePlayPause = (e) => {
+  const handlePlayPause = useCallback((e) => {
     e?.stopPropagation();
     if (!isActive) return;
 
@@ -125,29 +158,44 @@ const MusicPlayer = () => {
     } else {
       dispatch(playPause(true));
     }
-  };
+  }, [dispatch, isActive, isPlaying]);
 
   const handleNextSong = (e) => {
     e?.stopPropagation();
-    dispatch(playPause(false));
-
-    if (!shuffle) {
-      dispatch(nextSong((currentIndex + 1) % currentSongs.length));
-    } else {
-      dispatch(nextSong(Math.floor(Math.random() * currentSongs.length)));
-    }
+    if (!currentSongs?.length) return;
+    const index = getNextTrackIndex(currentIndex, currentSongs.length, shuffle);
+    setPlaybackError("");
+    dispatch(nextSong(index));
+    dispatch(playPause(true));
   };
 
   const handlePrevSong = (e) => {
     e?.stopPropagation();
-    if (currentIndex === 0) {
-      dispatch(prevSong(currentSongs.length - 1));
-    } else if (shuffle) {
-      dispatch(prevSong(Math.floor(Math.random() * currentSongs.length)));
-    } else {
-      dispatch(prevSong(currentIndex - 1));
-    }
+    if (!currentSongs?.length) return;
+    const index = getPreviousTrackIndex(currentIndex, currentSongs.length, shuffle);
+    setPlaybackError("");
+    dispatch(prevSong(index));
+    dispatch(playPause(true));
   };
+
+  const handleTrackEnded = () => {
+    if (!shouldAdvanceAfterEnd(currentIndex, currentSongs.length, repeatMode)) {
+      dispatch(playPause(false));
+      return;
+    }
+    handleNextSong();
+  };
+
+  const handlePlaybackState = useCallback((playing) => {
+    dispatch(playPause(playing));
+    if (playing) setPlaybackError("");
+  }, [dispatch]);
+
+  const handlePlaybackError = useCallback((message) => {
+    setPlaybackError(message);
+    setIsWaiting(false);
+    toast.error(message, { id: "playback-error" });
+  }, []);
 
   const handleAddToFavourite = async (favsong) => {
     if (status === "unauthenticated") {
@@ -168,31 +216,30 @@ const MusicPlayer = () => {
         }
         const res = await addFavourite(favsong);
         if (res?.success === true) {
-          setFavouriteSongs(res?.data?.favourites);
+          setFavouriteSongs(res?.data?.favourites || []);
+        } else {
+          throw new Error(res?.message || "Could not update favourites.");
         }
         setLoading(false);
       } catch (error) {
         setLoading(false);
-        console.log("add to fav error", error);
+        toast.error(error?.message || "Could not update favourites.");
       }
     }
   };
 
   return (
     <div
-      className={`relative overflow-hidden items-center lg:items-stretch lg:overflow-visible hideScrollBar sm:px-12  flex flex-col transition-all duration-100 ${
-        fullScreen ? "h-[100vh] w-[100vw]" : "w-full h-20 px-8 bg-black "
+      ref={dockRef}
+      className={`music-player-dock ${videoExpanded ? "video-expanded-active" : ""} relative z-50 overflow-hidden items-center lg:items-stretch lg:overflow-visible hideScrollBar sm:px-6 flex flex-col transition-all duration-200 ${
+        fullScreen ? "h-[100dvh] w-[100vw] overflow-y-auto" : videoExpanded ? "video-expanded-dock w-full px-2 sm:px-4 bg-[#0A100D]" : activeSong?.id ? "w-full min-h-[216px] justify-center px-2 sm:px-4 bg-[#0A100D]" : "w-full min-h-[112px] justify-center px-2 sm:px-4 bg-[#0A100D]"
       }`}
       onClick={() => {
         if (activeSong?.id) {
           dispatch(setFullScreen(!fullScreen));
         }
       }}
-      style={{
-        backgroundColor: bgColor
-          ? `rgba(${bgColor.red}, ${bgColor.green}, ${bgColor.blue}, 0.2)`
-          : "rgba(0,0,0,0.2)",
-      }}
+      style={{ backgroundColor: "rgba(5,8,7,0.96)", borderTop: "1px solid var(--zorofy-border)" }}
     >
       <HiOutlineChevronDown
         onClick={(e) => {
@@ -203,20 +250,45 @@ const MusicPlayer = () => {
           fullScreen ? "" : "hidden"
         }`}
       />
+      <div ref={playerSlotRef} className={`${activeSong?.id ? "youtube-player-slot" : "hidden"} ${videoExpanded ? "youtube-player-expanded-slot" : fullScreen ? "youtube-player-card-slot" : "youtube-player-inline-slot"}`} onClick={(event) => event.stopPropagation()}>
+        <Player
+          activeSong={activeSong}
+          volume={volume}
+          isPlaying={isPlaying}
+          seekTime={seekTime}
+          repeat={repeatMode === "one"}
+          fullScreen={videoExpanded}
+          expandedTrackView={videoExpanded && fullScreen}
+          onEnded={handleTrackEnded}
+          onTimeUpdate={(time) => setAppTime(time)}
+          onLoadedData={(nextDuration) => setDuration(Number(nextDuration) || 0)}
+          onPlaybackState={handlePlaybackState}
+          onPlaybackError={handlePlaybackError}
+          onWaiting={() => setIsWaiting(true)}
+          onCanPlay={() => setIsWaiting(false)}
+        />
+      </div>
       <FullscreenTrack
         handleNextSong={handleNextSong}
         handlePrevSong={handlePrevSong}
         activeSong={activeSong}
         fullScreen={fullScreen}
+        videoExpanded={videoExpanded}
+        largeVideo={videoExpanded && fullScreen}
       />
-      <div className=" flex items-center justify-between pt-2">
+      <div className={`music-player-controls-row flex w-full items-center justify-between gap-3 pt-2 ${fullScreen ? "flex-col lg:flex-row" : "flex-row"}`}>
         <Track
           isPlaying={isPlaying}
           isActive={isActive}
           activeSong={activeSong}
           fullScreen={fullScreen}
+          videoExpanded={videoExpanded}
+          onExpand={() => {
+            setVideoExpanded(false);
+            dispatch(setFullScreen(true));
+          }}
         />
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className={`flex flex-1 flex-col items-center justify-center gap-2 ${fullScreen ? "" : "min-w-0"}`}>
           <div
             className={`${
               fullScreen ? "" : "hidden"
@@ -229,15 +301,12 @@ const MusicPlayer = () => {
               handleAddToFavourite={handleAddToFavourite}
               style={"mb-4"}
             />
-            <div className={`mb-3 sm:hidden flex items-center justify-center`}>
-              <Downloader activeSong={activeSong} fullScreen={fullScreen} />
-            </div>
           </div>
           <Controls
             isPlaying={isPlaying}
             isActive={isActive}
-            repeat={repeat}
-            setRepeat={setRepeat}
+            repeatMode={repeatMode}
+            setRepeatMode={(mode) => dispatch(setRepeatMode(mode))}
             shuffle={shuffle}
             setShuffle={setShuffle}
             currentSongs={currentSongs}
@@ -249,44 +318,36 @@ const MusicPlayer = () => {
             handleAddToFavourite={handleAddToFavourite}
             favouriteSongs={favouriteSongs}
             loading={loading}
+            videoExpanded={videoExpanded}
+            onToggleVideo={() => setVideoExpanded((expanded) => !expanded)}
+            isBuffering={Boolean(activeSong?.id && isWaiting)}
           />
           <Seekbar
             value={appTime}
             min="0"
             max={duration}
             fullScreen={fullScreen}
-            onInput={(event) => setSeekTime(event.target.value)}
+            onInput={(event) => setSeekTime(Number(event.target.value))}
             setSeekTime={setSeekTime}
             appTime={appTime}
-          />
-          <Player
-            activeSong={activeSong}
-            volume={volume}
-            isPlaying={isPlaying}
-            seekTime={seekTime}
-            repeat={repeat}
-            currentIndex={currentIndex}
-            onEnded={handleNextSong}
-            handlePlayPause={handlePlayPause}
-            handleNextSong={handleNextSong}
-            handlePrevSong={handlePrevSong}
-            onTimeUpdate={(event) => setAppTime(event.target.currentTime)}
-            onLoadedData={(event) => setDuration(event.target.duration)}
-            appTime={appTime}
-            setSeekTime={setSeekTime}
           />
         </div>
         <VolumeBar
           activeSong={activeSong}
-          bgColor={bgColor}
+          bgColor={null}
           fullScreen={fullScreen}
           value={volume}
           min="0"
           max="1"
-          onChange={(event) => setVolume(event.target.value)}
+          onChange={(event) => setVolume(Number(event.target.value))}
           setVolume={setVolume}
         />
       </div>
+      {!fullScreen && (playbackError || isWaiting) && (
+        <p role={playbackError ? "alert" : "status"} className="absolute left-1/2 -translate-x-1/2 -top-7 max-w-[90vw] truncate rounded-t-md bg-black/90 px-3 py-1 text-xs text-amber-200">
+          {playbackError || "Buffering your music…"}
+        </p>
+      )}
       {fullScreen && (
         <div className=" lg:hidden">
           <Lyrics activeSong={activeSong} currentSongs={currentSongs} />

@@ -8,6 +8,7 @@ const initialState = {
   activeSong: {},
   fullScreen: false,
   autoAdd: false,
+  repeatMode: "off",
 };
 
 const playerSlice = createSlice({
@@ -58,11 +59,15 @@ const playerSlice = createSlice({
 
     setAutoAdd: (state, action) => {
       state.autoAdd = action.payload;
-    }
+    },
+
+    setRepeatMode: (state, action) => {
+      state.repeatMode = action.payload;
+    },
    
   },
 });
 
-export const { setActiveSong, nextSong, prevSong, playPause, setFullScreen, setAutoAdd } = playerSlice.actions;
+export const { setActiveSong, nextSong, prevSong, playPause, setFullScreen, setAutoAdd, setRepeatMode } = playerSlice.actions;
 
 export default playerSlice.reducer;

@@ -3,12 +3,13 @@ import { getToken } from "next-auth/jwt";
 import User from "@/models/User";
 import dbConnect from "@/utils/dbconnect";
 import UserData from "@/models/UserData";
+import authSecret from "@/utils/authSecret";
 
 
 
 // Get user data
 export async function GET(req){
-    const token = await getToken({ req, secret: process.env.JWT_SECRET });
+    const token = await getToken({ req, secret: authSecret });
     if (!token) {
         return NextResponse.json(
             {
@@ -69,7 +70,7 @@ export async function GET(req){
 
 // Add to favourites
 export async function POST(request) {
-    const token = await getToken({ req: request, secret: process.env.JWT_SECRET });
+    const token = await getToken({ req: request, secret: authSecret });
     if (!token) {
         return NextResponse.json(
             {

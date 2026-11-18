@@ -44,6 +44,7 @@ export async function POST(request) {
       userName,
       email,
       password: passwordHash,
+      authProviders: ["credentials"],
       imageUrl: `/logo.png`,
       userData: userData._id,
     });

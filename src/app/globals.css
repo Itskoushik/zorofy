@@ -795,3 +795,10 @@ body:not(.has-active-song) .music-player-dock:not(.video-expanded-dock) {
 body:not(.has-active-song) .youtube-player-slot {
   display: none;
 }
+
+/* Login and recovery screens use the full area beneath the site header. */
+body.auth-page .app-content-scroll {
+  height: 100dvh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}

@@ -8,9 +8,12 @@ import { setProgress } from '@/redux/features/loadingBarSlice'
 import { MdOutlineMenu } from 'react-icons/md'
 import { IoClose } from 'react-icons/io5'
 import Sidebar from './Sidebar/Sidebar'
+import { usePathname } from 'next/navigation'
 
 
 const Navbar = () => {
+  const pathname = usePathname();
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname.startsWith('/reset-password');
   const dispatch = useDispatch();
   const [showNav, setShowNav] = React.useState(false);
   return (
@@ -28,7 +31,7 @@ const Navbar = () => {
             </Link>
           </div>
         </div>
-        <Searchbar />
+        {!isAuthPage && <Searchbar />}
       </div>
 
       <Sidebar showNav={showNav} setShowNav={setShowNav} />

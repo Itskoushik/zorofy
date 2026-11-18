@@ -1,159 +1,154 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
-import { toast } from "react-hot-toast";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+import { toast } from "react-hot-toast";
 import { useDispatch } from "react-redux";
 import { setProgress } from "@/redux/features/loadingBarSlice";
-import ZorofyAudioLoader from "@/components/ZorofyAudioLoader";
-import { useSession } from "next-auth/react";
-import { FaGoogle } from "react-icons/fa";
+import { AuthCard, AuthDivider, AuthField, AuthNotice, AuthSubmitButton, GoogleButton } from "@/components/Auth/AuthUi";
 
-const page = () => {
+const oauthErrors = {
+  OAuthAccountNotLinked: "This email is already registered. Sign in with your original method, then connect Google from your account.",
+  OAuthCallbackError: "Google sign-in could not be completed. Check the Google callback and account database settings, then try again.",
+  OAuthSignin: "Zorofy could not start Google sign-in. Check the OAuth client configuration and try again.",
+  AccessDenied: "Google did not provide a verified email address for this account.",
+  Configuration: "Sign-in is not configured correctly. Check the server authentication environment settings.",
+};
+
+export default function LoginPage() {
   const { status, update } = useSession();
   const router = useRouter();
   const dispatch = useDispatch();
   const [authConfig, setAuthConfig] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formData, setFormData] = useState({ email: "", password: "" });
 
   useEffect(() => {
+    let active = true;
     fetch("/api/auth/status", { cache: "no-store" })
       .then((response) => response.json())
-      .then(setAuthConfig)
-      .catch(() => setAuthConfig({ databaseConfigured: false, googleEnabled: false }));
+      .then((config) => { if (active) setAuthConfig(config); })
+      .catch(() => { if (active) setAuthConfig({ databaseConfigured: false, googleEnabled: false, sessionSecretConfigured: false, canonicalUrlConfigured: false }); });
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (error) setErrorMessage(oauthErrors[error] || "Sign-in could not be completed. Please try again.");
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/");
   }, [status, router]);
 
-  const onchange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handelSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setErrorMessage("");
+    const errors = {};
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = "Enter a valid email address.";
+    if (!formData.password) errors.password = "Enter your password.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     if (!authConfig?.databaseConfigured) {
-      toast.error("Account storage is not configured. Set MONGODB_URI in .env.local, then restart the app.");
+      setErrorMessage("Account storage is unavailable. Check the server database configuration and try again.");
       return;
     }
     try {
       setIsSubmitting(true);
       dispatch(setProgress(70));
-      const res = await signIn("credentials", {
+      const result = await signIn("credentials", {
         redirect: false,
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         callbackUrl: "/",
       });
-      if (res?.ok && !res.error) {
-        await update();
-        toast.success("Logged in successfully");
-        router.replace("/");
-        router.refresh();
-      } else {
-        toast.error(res?.error === "CredentialsSignin" ? "Email or password is incorrect." : "Could not log in. Check your account configuration and try again.");
+      if (!result?.ok || result.error) {
+        setErrorMessage(result?.error === "CredentialsSignin" ? "That email and password combination was not recognized." : "We could not sign you in. Please try again.");
+        return;
       }
-    } catch (error) {
-      toast.error(error?.message || "Could not log in. Please try again.");
+      await update();
+      toast.success("Welcome back");
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setErrorMessage("We could not reach the sign-in service. Please try again.");
     } finally {
       setIsSubmitting(false);
       dispatch(setProgress(100));
     }
   };
 
-  // redirect if user is authenticated
-  if (status === "loading") {
-    return (
-      <div className=" w-screen h-screen flex justify-center items-center">
-        <ZorofyAudioLoader size="medium" label="Tuning your experience..." />
-      </div>
-    );
-  }
-  return (
-    <div className=" w-11/12 mx-auto mt-32 min-h-screen">
-      <div className=" flex justify-center items-center">
-        <div className="container flex justify-center flex-col items-center w-screen sm:w-[90vw] lg:w-1/2">
-          <h1 className=" text-4xl text-[#00E676] font-medium mb-8">Login</h1>
-          {authConfig && !authConfig.databaseConfigured && <p role="alert" className="mb-5 max-w-xl rounded-xl border border-amber-400/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">Account storage is not configured. Add MONGODB_URI to .env.local and restart the app to enable login and signup.</p>}
-          <form
-            onSubmit={handelSubmit}
-            className="text-white flex flex-col text-base lg:text-xl gap-2 font-medium"
-          >
-            <div className=" flex gap-4 items-end mb-3">
-              <label className=" mr-9 lg:mr-11" htmlFor="email">
-                Email
-              </label>
-              <input
-                onChange={onchange}
-                value={formData.email}
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="Email"
-                required
-                className=" appearance-none bg-black border-b border-white focus:outline-none text-base lg:text-lg"
-              />
-            </div>
-            <div className=" flex gap-4 items-end">
-              <label className="" htmlFor="password">
-                Password
-              </label>
-              <input
-                onChange={onchange}
-                value={formData.password}
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Password"
-                required
-                className=" appearance-none bg-black border-b border-white focus:outline-none text-base lg:text-lg"
-              />
-            </div>
-            <p className="text-xs font-normal text-zorofy-muted">
-              Your session stays active for up to 30 days. Your browser can offer to save your password securely.
-            </p>
-            <Link href={"/reset-password"}>
-              <p className=" text-xs text-[#00E676]">Forgot Password?</p>
-            </Link>
-            <div className=" w-full flex justify-center">
-              <button
-                type="submit"
-                disabled={isSubmitting || !authConfig?.databaseConfigured}
-                className="relative inline-block px-4 py-2 font-medium group"
-              >
-                <span className="absolute inset-0 w-full h-full transition duration-200 ease-out transform translate-x-1 translate-y-1 bg-[#008F52] group-hover:-translate-x-0 group-hover:-translate-y-0"></span>
-                <span className="absolute inset-0 w-full h-full bg-black border-2 border-white group-hover:bg-"></span>
-                <span className="relative text-white group-hover:text-[#00E676]">
-                  {isSubmitting ? "Logging in..." : "Login"}
-                </span>
-              </button>
-            </div>
-            {authConfig?.googleEnabled && authConfig?.databaseConfigured && <>
-              <div className=" flex justify-center items-center"><hr className=" w-1/2 mx-2 border-white" /><p className=" text-xs text-white">or</p><hr className=" w-1/2 mx-2 border-white" /></div>
-              <div className=" w-full flex justify-center">
-                <button onClick={() => signIn("google", { callbackUrl: "/" })} type="button" disabled={isSubmitting} className="flex items-center gap-2 hover:border-[#00E676] justify-center px-4 py-2 group font-medium border-2 border-white rounded-sm disabled:opacity-50">
-                  <FaGoogle className=" group-hover:text-[#00E676]" /> Continue with Google
-                </button>
-              </div>
-            </>}
-            <p className=" w-full flex justify-center gap-2">
-              Don't have an account?{" "}
-              <Link href={"/signup"} className=" text-[#00E676] font-semibold">
-                {" "}
-                Sign Up
-              </Link>
-            </p>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};
+  const handleGoogle = async () => {
+    if (googleLoading || !authConfig?.googleEnabled || !authConfig?.databaseConfigured) return;
+    setErrorMessage("");
+    setGoogleLoading(true);
+    try {
+      const result = await signIn("google", { callbackUrl: "/" });
+      if (result?.error) {
+        setErrorMessage("Google sign-in could not be completed. Please check your account and try again.");
+        setGoogleLoading(false);
+      }
+    } catch {
+      setErrorMessage("Zorofy could not connect to Google sign-in. Please try again.");
+      setGoogleLoading(false);
+    }
+  };
 
-export default page;
+  return (
+    <AuthCard title="Welcome back" subtitle="Your music is waiting for you.">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <AuthNotice>{errorMessage}</AuthNotice>
+        {authConfig && !authConfig.databaseConfigured && <AuthNotice tone="warning">Account storage is unavailable right now. Please try again later.</AuthNotice>}
+        {authConfig && (!authConfig.sessionSecretConfigured || !authConfig.canonicalUrlConfigured) && <AuthNotice tone="warning">Server sign-in configuration is incomplete. Set NEXTAUTH_SECRET and NEXTAUTH_URL on the server.</AuthNotice>}
+        <AuthField
+          id="email"
+          label="Email address"
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          placeholder="you@example.com"
+          maxLength={254}
+          value={formData.email}
+          onChange={(event) => { setFormData((current) => ({ ...current, email: event.target.value })); setFieldErrors((current) => ({ ...current, email: "" })); }}
+          error={fieldErrors.email}
+          required
+          disabled={isSubmitting || googleLoading}
+        />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="password" className="text-sm font-medium text-[#E8EEE9]">Password</label>
+            <Link href="/reset-password" className="text-xs font-medium text-[#39FF88] transition hover:text-white focus-visible:outline-none focus-visible:underline">Forgot password?</Link>
+          </div>
+          <AuthField
+            id="password"
+            label=""
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={(event) => { setFormData((current) => ({ ...current, password: event.target.value })); setFieldErrors((current) => ({ ...current, password: "" })); }}
+            error={fieldErrors.password}
+            required
+            disabled={isSubmitting || googleLoading}
+            trailing={<button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} className="rounded-md p-1 text-[#A0AAA3] outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-[#00E676]"><span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>{showPassword ? <FiEyeOff /> : <FiEye />}</button>}
+          />
+        </div>
+        <AuthSubmitButton loading={isSubmitting} disabled={status === "loading" || !authConfig?.databaseConfigured || !authConfig?.sessionSecretConfigured || !authConfig?.canonicalUrlConfigured}>Sign in</AuthSubmitButton>
+        {authConfig?.googleEnabled && <>
+          <AuthDivider />
+          <GoogleButton onClick={handleGoogle} loading={googleLoading} disabled={isSubmitting || !authConfig.databaseConfigured || !authConfig.sessionSecretConfigured || !authConfig.canonicalUrlConfigured} />
+        </>}
+        <p className="pt-1 text-center text-sm text-[#A0AAA3]">
+          New to Zorofy? <Link href="/signup" className="font-semibold text-[#39FF88] transition hover:text-white focus-visible:outline-none focus-visible:underline">Create an account</Link>
+        </p>
+      </form>
+    </AuthCard>
+  );
+}

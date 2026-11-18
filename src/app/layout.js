@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import "./globals.css";
-import MusicPlayer from "@/components/MusicPlayer";
+import MusicPlayerFrame from "@/components/MusicPlayer/MusicPlayerFrame";
 import Providers from "@/redux/Providers";
 import TopProgressBar from "@/components/topProgressBar/TopProgressBar";
 import SongsHistory from "@/components/SongsHistory";
@@ -53,9 +53,7 @@ export default function RootLayout({ children }) {
               <Navbar />
               {children}
             </AppContent>
-            <div className="fixed bottom-0 left-0 right-0 z-50 flex rounded-t-3 backdrop-blur-lg">
-              <MusicPlayer />
-            </div>
+            <MusicPlayerFrame />
           </AuthProvider>
         </Providers>
       </body>

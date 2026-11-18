@@ -18,7 +18,7 @@ import Lyrics from "./Lyrics";
 import { HiOutlineChevronDown } from "react-icons/hi";
 import { addFavourite, getFavourite } from "@/services/dataAPI";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import FavouriteButton from "./FavouriteButton";
 import { toast } from "react-hot-toast";
 import { getNextTrackIndex, getPreviousTrackIndex, shouldAdvanceAfterEnd } from "@/services/playerUtils.mjs";
@@ -43,6 +43,8 @@ const MusicPlayer = () => {
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const { status } = useSession();
+  const pathname = usePathname();
+  const isAuthRoute = pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/reset-password");
   const router = useRouter();
   const [playbackError, setPlaybackError] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
@@ -120,15 +122,15 @@ const MusicPlayer = () => {
 
   // off scroll when full screen
   useEffect(() => {
-    document.documentElement.style.overflow = fullScreen ? "hidden" : "auto";
+    document.documentElement.style.overflow = fullScreen && !isAuthRoute ? "hidden" : "auto";
     const content = document.querySelector(".app-content-scroll");
-    if (content) content.style.overflowY = fullScreen ? "hidden" : "auto";
+    if (content) content.style.overflowY = fullScreen && !isAuthRoute ? "hidden" : "auto";
 
     return () => {
       document.documentElement.style.overflow = "auto";
       if (content) content.style.overflowY = "auto";
     };
-  }, [fullScreen]);
+  }, [fullScreen, isAuthRoute]);
 
   // Hotkey for play pause
   const handleKeyPress = (event) => {
